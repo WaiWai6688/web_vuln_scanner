@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebShield — Vulnerability Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #0f1420;
+    --surface2: #161c2d;
+    --border: #1e2840;
+    --accent: #00e5ff;
+    --accent2: #7b61ff;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --high: #ff4757;
+    --medium: #ffa502;
+    --low: #ffdd59;
+    --info: #00e5ff;
+    --success: #2ed573;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-mark {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px; font-weight: 700; color: #0a0e17;
+  }
+  .logo-text h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text span { font-size: 12px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
+  .badge {
+    margin-left: auto;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    color: var(--accent);
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 52px 0 40px;
+  }
+  .hero h2 {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 14px;
+  }
+  .hero p { color: var(--muted); font-size: 16px; max-width: 480px; margin: 0 auto 36px; }
+
+  /* Scan form */
+  .scan-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .input-row {
+    display: flex;
+    gap: 12px;
+  }
+  .url-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .url-input:focus { border-color: var(--accent); }
+  .url-input::placeholder { color: var(--muted); }
+  .scan-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    color: #0a0e17;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .scan-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .warning-text {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    text-align: center;
+  }
+
+  /* Progress */
+  #progress-section { display: none; max-width: 680px; margin: 24px auto 0; }
+  .progress-bar-wrap {
+    background: var(--surface2);
+    border-radius: 6px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 8px;
+  }
+
+  /* Error */
+  #error-box {
+    display: none;
+    max-width: 680px;
+    margin: 16px auto 0;
+    background: rgba(255,71,87,0.1);
+    border: 1px solid rgba(255,71,87,0.3);
+    border-radius: 10px;
+    padding: 12px 18px;
+    color: var(--high);
+    font-size: 13px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* Results */
+  #results-section { display: none; padding: 40px 0 60px; }
+
+  /* Score */
+  .score-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .score-circle {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-weight: 800;
+  }
+  .score-circle .num { font-size: 32px; line-height: 1; }
+  .score-circle .label { font-size: 11px; font-family: 'Share Tech Mono', monospace; }
+  .score-good { background: rgba(46,213,115,0.12); border: 2px solid var(--success); color: var(--success); }
+  .score-medium { background: rgba(255,165,2,0.12); border: 2px solid var(--medium); color: var(--medium); }
+  .score-bad { background: rgba(255,71,87,0.12); border: 2px solid var(--high); color: var(--high); }
+  .score-details h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .score-details p { color: var(--muted); font-size: 13px; font-family: 'Share Tech Mono', monospace; margin-bottom: 14px; }
+  .counts { display: flex; gap: 12px; flex-wrap: wrap; }
+  .count-pill {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .pill-high   { background: rgba(255,71,87,0.15);  color: var(--high);    border: 1px solid rgba(255,71,87,0.3); }
+  .pill-medium { background: rgba(255,165,2,0.15);  color: var(--medium);  border: 1px solid rgba(255,165,2,0.3); }
+  .pill-low    { background: rgba(255,221,89,0.15); color: var(--low);     border: 1px solid rgba(255,221,89,0.3); }
+  .pill-info   { background: rgba(0,229,255,0.10);  color: var(--info);    border: 1px solid rgba(0,229,255,0.2); }
+
+  /* Download btn */
+  .actions { display: flex; gap: 12px; margin-bottom: 28px; }
+  .dl-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .dl-btn:hover { background: rgba(0,229,255,0.08); }
+  .new-scan-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .new-scan-btn:hover { border-color: var(--muted); }
+
+  /* Category filter tabs */
+  .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .tab-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn.active, .tab-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.06);
+  }
+
+  /* Finding cards */
+  .findings-list { display: flex; flex-direction: column; gap: 10px; }
+  .finding-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    border-left: 3px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .finding-card.sev-HIGH   { border-left-color: var(--high); }
+  .finding-card.sev-MEDIUM { border-left-color: var(--medium); }
+  .finding-card.sev-LOW    { border-left-color: var(--low); }
+  .finding-card.sev-INFO   { border-left-color: var(--info); }
+  .finding-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .sev-badge {
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 2px 9px;
+    border-radius: 4px;
+  }
+  .sev-HIGH   { background: rgba(255,71,87,0.15);  color: var(--high); }
+  .sev-MEDIUM { background: rgba(255,165,2,0.15);  color: var(--medium); }
+  .sev-LOW    { background: rgba(255,221,89,0.15); color: var(--low); }
+  .sev-INFO   { background: rgba(0,229,255,0.10);  color: var(--info); }
+  .finding-type { font-weight: 700; font-size: 14px; }
+  .finding-loc { color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; margin-bottom: 5px; }
+  .finding-desc { color: #94a3b8; font-size: 13px; line-height: 1.5; }
+  .finding-rec { margin-top: 8px; font-size: 12px; color: var(--success); font-family: 'Share Tech Mono', monospace; }
+  .finding-rec::before { content: '✓ Fix: '; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-mark">WS</div>
+    <div class="logo-text">
+      <h1>WebShield</h1>
+      <span>Web Vulnerability Scanner v1.0</span>
+    </div>
+    <span class="badge">VulnRadar</span>
+  </header>
+
+  <section class="hero">
+    <h2>Scan. Detect.<br>Secure.</h2>
+    <p>Automated web vulnerability scanner — detects SQLi, XSS, insecure headers, and SSL issues.</p>
+
+    <div class="scan-box">
+      <div class="input-row">
+        <input type="text" class="url-input" id="url-input"
+          placeholder="https://example.com" autocomplete="off">
+        <button class="scan-btn" id="scan-btn" onclick="startScan()">Scan Now</button>
+      </div>
+      <p class="warning-text">⚠ Only scan websites you own or have written permission to test.</p>
+    </div>
+
+    <div id="error-box"></div>
+
+    <div id="progress-section">
+      <div class="progress-label">
+        <span id="progress-text">Initializing scan...</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="results-section">
+    <div class="score-grid" id="score-box"></div>
+
+    <div class="actions">
+      <a href="/report/download" class="dl-btn" id="dl-btn">⬇ Download PDF Report</a>
+      <button class="new-scan-btn" onclick="resetScan()">New Scan</button>
+    </div>
+
+    <div class="filter-tabs" id="filter-tabs"></div>
+    <div class="findings-list" id="findings-list"></div>
+  </section>
+
+  <footer>WebShield For Educational Use Only</footer>
+</div>
+
+<script>
+let allFindings = [];
+
+const STEPS = [
+  "Checking HTTP headers...",
+  "Testing SQL injection payloads...",
+  "Testing XSS payloads...",
+  "Scanning SSL certificate...",
+  "Checking open ports...",
+  "Compiling results...",
+];
+
+function animateProgress(callback) {
+  const bar = document.getElementById("progress-bar");
+  const pct = document.getElementById("progress-pct");
+  const txt = document.getElementById("progress-text");
+  let step = 0;
+  let width = 0;
+  const interval = setInterval(() => {
+    if (step < STEPS.length) {
+      txt.textContent = STEPS[step];
+      step++;
+    }
+    width = Math.min(width + (Math.random() * 12 + 4), 90);
+    bar.style.width = width + "%";
+    pct.textContent = Math.round(width) + "%";
+  }, 1400);
+  return () => {
+    clearInterval(interval);
+    bar.style.width = "100%";
+    pct.textContent = "100%";
+    txt.textContent = "Scan complete!";
+    setTimeout(callback, 400);
+  };
+}
+
+async function startScan() {
+  const url = document.getElementById("url-input").value.trim();
+  if (!url) return;
+
+  document.getElementById("error-box").style.display = "none";
+  document.getElementById("results-section").style.display = "none";
+  document.getElementById("progress-section").style.display = "block";
+  document.getElementById("scan-btn").disabled = true;
+  document.getElementById("progress-bar").style.width = "0%";
+
+  const done = animateProgress(() => {});
+
+  const form = new FormData();
+  form.append("url", url);
+
+  try {
+    const resp = await fetch("/scan", { method: "POST", body: form });
+    const data = await resp.json();
+    const finish = animateProgress(() => {
+      if (data.error) {
+        showError(data.error);
+      } else {
+        showResults(data.url, data.data);
+      }
+      document.getElementById("scan-btn").disabled = false;
+    });
+    setTimeout(finish, 100);
+  } catch (e) {
+    done();
+    showError("Network error — could not reach the server.");
+    document.getElementById("scan-btn").disabled = false;
+  }
+}
+
+function showError(msg) {
+  document.getElementById("progress-section").style.display = "none";
+  const eb = document.getElementById("error-box");
+  eb.textContent = "⚠ " + msg;
+  eb.style.display = "block";
+}
+
+function showResults(url, data) {
+  document.getElementById("progress-section").style.display = "none";
+  allFindings = data.findings;
+  const score = data.score;
+  const counts = data.counts;
+
+  // Score box
+  let cls = score >= 80 ? "score-good" : score >= 50 ? "score-medium" : "score-bad";
+  let grade = score >= 80 ? "Good" : score >= 50 ? "Fair" : "Poor";
+  document.getElementById("score-box").innerHTML = `
+    <div class="score-circle ${cls}">
+      <span class="num">${score}</span>
+      <span class="label">${grade}</span>
+    </div>
+    <div class="score-details">
+      <h3>Security Score: ${score}/100</h3>
+      <p>Target: ${url}</p>
+      <div class="counts">
+        <span class="count-pill pill-high">${counts.HIGH} HIGH</span>
+        <span class="count-pill pill-medium">${counts.MEDIUM} MEDIUM</span>
+        <span class="count-pill pill-low">${counts.LOW} LOW</span>
+        <span class="count-pill pill-info">${counts.INFO} INFO</span>
+      </div>
+    </div>
+  `;
+
+  buildTabs();
+  renderFindings("ALL");
+  document.getElementById("results-section").style.display = "block";
+  document.getElementById("results-section").scrollIntoView({ behavior: "smooth" });
+}
+
+function buildTabs() {
+  const categories = ["ALL", ...new Set(allFindings.map(f => f.type))].slice(0, 8);
+  const tabs = document.getElementById("filter-tabs");
+  tabs.innerHTML = categories.map(c =>
+    `<button class="tab-btn ${c === 'ALL' ? 'active' : ''}" onclick="filterTab(this,'${c}')">${c}</button>`
+  ).join("");
+}
+
+function filterTab(el, cat) {
+  document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  renderFindings(cat);
+}
+
+function renderFindings(cat) {
+  const list = document.getElementById("findings-list");
+  const filtered = cat === "ALL" ? allFindings : allFindings.filter(f => f.type === cat);
+  list.innerHTML = filtered.map(f => `
+    <div class="finding-card sev-${f.severity}">
+      <div class="finding-header">
+        <span class="sev-badge sev-${f.severity}">${f.severity}</span>
+        <span class="finding-type">${f.type}</span>
+      </div>
+      <div class="finding-loc">📍 ${f.location}</div>
+      <div class="finding-desc">${f.description}</div>
+      ${f.recommendation ? `<div class="finding-rec">${f.recommendation}</div>` : ""}
+    </div>
+  `).join("");
+}
+
+function resetScan() {
+  document.getElementById("url-input").value = "";
+  document.getElementById("results-section").style.display = "none";
+  document.getElementById("error-box").style.display = "none";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("url-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") startScan();
+});
+</script>
+</body>
+</html>
