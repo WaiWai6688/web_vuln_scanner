@@ -1,5 +1,10 @@
 import requests
 
+STATUS_CONFIRMED = "confirmed"
+STATUS_REVIEW = "needs_manual_review"
+STATUS_INFO = "informational"
+STATUS_INCONCLUSIVE = "inconclusive"
+
 SECURITY_HEADERS = {
     "Strict-Transport-Security": {
         "severity": "HIGH",
@@ -48,6 +53,8 @@ def scan(url):
                 results.append({
                     "type": "Missing Security Header",
                     "severity": info["severity"],
+                    "verification_status": STATUS_REVIEW,
+                    "confidence": 0.55 if header in {"Strict-Transport-Security", "Content-Security-Policy"} else 0.45,
                     "location": f"HTTP Header: {header}",
                     "payload": "-",
                     "description": info["description"],
@@ -57,6 +64,8 @@ def scan(url):
                 results.append({
                     "type": "Security Header Present",
                     "severity": "INFO",
+                    "verification_status": STATUS_INFO,
+                    "confidence": 0.95,
                     "location": f"HTTP Header: {header}",
                     "payload": headers[header.lower()],
                     "description": f"{header} is properly set.",
@@ -69,6 +78,8 @@ def scan(url):
                 results.append({
                     "type": "Information Disclosure",
                     "severity": "LOW",
+                    "verification_status": STATUS_INFO,
+                    "confidence": 0.5,
                     "location": f"HTTP Header: {header}",
                     "payload": headers[header.lower()],
                     "description": f"{header} header reveals server/technology details.",
@@ -80,6 +91,8 @@ def scan(url):
             results.append({
                 "type": "Insecure Protocol",
                 "severity": "HIGH",
+                "verification_status": STATUS_CONFIRMED,
+                "confidence": 0.98,
                 "location": "URL scheme",
                 "payload": url,
                 "description": "Site is served over HTTP — all data transmitted in plaintext.",
@@ -89,16 +102,20 @@ def scan(url):
     except requests.exceptions.SSLError:
         results.append({
             "type": "SSL Certificate Error",
-            "severity": "HIGH",
+            "severity": "MEDIUM",
+            "verification_status": STATUS_INCONCLUSIVE,
+            "confidence": 0.5,
             "location": "SSL/TLS",
             "payload": "-",
             "description": "SSL certificate is invalid, expired, or self-signed.",
-            "recommendation": "Install a valid SSL certificate from a trusted CA.",
+            "recommendation": "Verify the certificate behavior manually before treating this as a confirmed TLS issue.",
         })
     except Exception as e:
         results.append({
             "type": "Header Scan Error",
             "severity": "INFO",
+            "verification_status": STATUS_INCONCLUSIVE,
+            "confidence": 1.0,
             "location": "-",
             "payload": "-",
             "description": f"Could not retrieve headers: {str(e)}",

@@ -2,6 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 
+STATUS_REVIEW = "needs_manual_review"
+STATUS_INFO = "informational"
+
 PAYLOADS = [
     "' OR '1'='1",
     "' OR '1'='1' --",
@@ -77,6 +80,8 @@ def scan(url):
                         results.append({
                             "type": "SQL Injection",
                             "severity": "HIGH",
+                            "verification_status": STATUS_REVIEW,
+                            "confidence": 0.75,
                             "location": f"URL parameter: {param}",
                             "payload": payload,
                             "description": "SQL error detected in response — parameter may be injectable.",
@@ -106,6 +111,8 @@ def scan(url):
                     results.append({
                         "type": "SQL Injection",
                         "severity": "HIGH",
+                        "verification_status": STATUS_REVIEW,
+                        "confidence": 0.75,
                         "location": f"Form #{i+1} (action: {details['action'] or '/'})",
                         "payload": payload,
                         "description": "SQL error in form response — form input may be injectable.",
@@ -118,6 +125,8 @@ def scan(url):
         results.append({
             "type": "SQL Injection",
             "severity": "INFO",
+            "verification_status": STATUS_INFO,
+            "confidence": 0.8,
             "location": "All tested inputs",
             "payload": "-",
             "description": "No obvious SQL injection vulnerabilities detected.",

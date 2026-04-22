@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WebShield — Vulnerability Scanner</title>
+<title>WebShield - Vulnerability Scanner</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -300,6 +300,7 @@
   .finding-type { font-weight: 700; font-size: 14px; }
   .finding-loc { color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; margin-bottom: 5px; }
   .finding-desc { color: #94a3b8; font-size: 13px; line-height: 1.5; }
+  .finding-status { color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 11px; margin-top: 6px; }
   .finding-rec { margin-top: 8px; font-size: 12px; color: var(--success); font-family: 'Share Tech Mono', monospace; }
   .finding-rec::before { content: '✓ Fix: '; }
 
@@ -320,14 +321,14 @@
     <div class="logo-mark">WS</div>
     <div class="logo-text">
       <h1>WebShield</h1>
-      <span>Web Vulnerability Scanner v1.0</span>
+      <span>Web Vulnerability Scanner v2.0</span>
     </div>
     <span class="badge">VulnRadar</span>
   </header>
 
   <section class="hero">
     <h2>Scan. Detect.<br>Secure.</h2>
-    <p>Automated web vulnerability scanner — detects SQLi, XSS, insecure headers, and SSL issues.</p>
+    <p>Automated web vulnerability scanner with an upgraded XSS audit engine for safer, context-aware testing.</p>
 
     <div class="scan-box">
       <div class="input-row">
@@ -335,7 +336,7 @@
           placeholder="https://example.com" autocomplete="off">
         <button class="scan-btn" id="scan-btn" onclick="startScan()">Scan Now</button>
       </div>
-      <p class="warning-text">⚠ Only scan websites you own or have written permission to test.</p>
+      <p class="warning-text">Only scan websites you own or have written permission to test.</p>
     </div>
 
     <div id="error-box"></div>
@@ -372,7 +373,7 @@ let allFindings = [];
 const STEPS = [
   "Checking HTTP headers...",
   "Testing SQL injection payloads...",
-  "Testing XSS payloads...",
+  "Auditing XSS reflections and DOM sinks...",
   "Scanning SSL certificate...",
   "Checking open ports...",
   "Compiling results...",
@@ -431,7 +432,7 @@ async function startScan() {
     setTimeout(finish, 100);
   } catch (e) {
     done();
-    showError("Network error — could not reach the server.");
+    showError("Network error - could not reach the server.");
     document.getElementById("scan-btn").disabled = false;
   }
 }
@@ -439,7 +440,7 @@ async function startScan() {
 function showError(msg) {
   document.getElementById("progress-section").style.display = "none";
   const eb = document.getElementById("error-box");
-  eb.textContent = "⚠ " + msg;
+  eb.textContent = "Warning: " + msg;
   eb.style.display = "block";
 }
 
@@ -500,9 +501,38 @@ function renderFindings(cat) {
       </div>
       <div class="finding-loc">📍 ${f.location}</div>
       <div class="finding-desc">${f.description}</div>
+      <div class="finding-status">Status: ${humanizeStatus(f.verification_status)} | Confidence: ${formatConfidence(f.confidence)}</div>
+      ${f.technique ? `<div class="finding-loc">Method: ${escapeHtml(f.technique)}</div>` : ""}
+      ${f.payload && f.payload !== "-" ? `<div class="finding-loc">Payload: ${escapeHtml(f.payload)}</div>` : ""}
+      ${f.evidence ? `<div class="finding-loc">Evidence: ${escapeHtml(f.evidence)}</div>` : ""}
       ${f.recommendation ? `<div class="finding-rec">${f.recommendation}</div>` : ""}
     </div>
   `).join("");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function humanizeStatus(status) {
+  const labels = {
+    confirmed: "Confirmed",
+    needs_manual_review: "Needs Manual Review",
+    inconclusive: "Inconclusive",
+    informational: "Informational"
+  };
+  return labels[status] || "Informational";
+}
+
+function formatConfidence(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "-";
+  return `${Math.round(num * 100)}%`;
 }
 
 function resetScan() {

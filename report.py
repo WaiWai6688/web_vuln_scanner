@@ -84,10 +84,20 @@ def generate(url, scan_data, output_path):
         pdf.set_font("Helvetica", "", 9)
         pdf.cell(0, 5, safe("   Location : " + f.get("location", "-")), ln=1)
         pdf.cell(0, 5, safe("   Payload  : " + str(f.get("payload", "-"))), ln=1)
+        pdf.cell(0, 5, safe("   Status   : " + f.get("verification_status", "informational")), ln=1)
+        pdf.cell(0, 5, safe("   Confidence: " + str(f.get("confidence", "-"))), ln=1)
+
+        technique = f.get("technique", "")
+        if technique:
+            pdf.cell(0, 5, safe("   Method   : " + technique), ln=1)
 
         desc = f.get("description", "")
         if desc:
             pdf.multi_cell(0, 5, safe("   Details  : " + desc))
+
+        evidence = f.get("evidence", "")
+        if evidence:
+            pdf.multi_cell(0, 5, safe("   Evidence : " + evidence))
 
         rec = f.get("recommendation", "")
         if rec:

@@ -19,6 +19,10 @@ COMMON_PORTS = {
 }
 
 RISKY_PORTS = {21, 23, 3306, 5432, 6379, 27017}
+STATUS_CONFIRMED = "confirmed"
+STATUS_REVIEW = "needs_manual_review"
+STATUS_INFO = "informational"
+STATUS_INCONCLUSIVE = "inconclusive"
 
 def check_ssl(hostname):
     results = []
@@ -43,6 +47,8 @@ def check_ssl(hostname):
             results.append({
                 "type": "SSL Certificate",
                 "severity": sev,
+                "verification_status": STATUS_CONFIRMED if days_left < 30 else STATUS_INFO,
+                "confidence": 0.98,
                 "location": f"{hostname}:443",
                 "payload": expire_str,
                 "description": desc,
@@ -54,6 +60,8 @@ def check_ssl(hostname):
         results.append({
             "type": "SSL Issuer",
             "severity": "INFO",
+            "verification_status": STATUS_INFO,
+            "confidence": 1.0,
             "location": f"{hostname}:443",
             "payload": issuer.get("organizationName", "Unknown"),
             "description": f"Certificate issued by: {issuer.get('organizationName', 'Unknown')}",
@@ -64,6 +72,8 @@ def check_ssl(hostname):
         results.append({
             "type": "SSL Certificate",
             "severity": "HIGH",
+            "verification_status": STATUS_CONFIRMED,
+            "confidence": 0.95,
             "location": f"{hostname}:443",
             "payload": "-",
             "description": "SSL certificate verification failed — self-signed or untrusted CA.",
@@ -73,6 +83,8 @@ def check_ssl(hostname):
         results.append({
             "type": "SSL Certificate",
             "severity": "MEDIUM",
+            "verification_status": STATUS_REVIEW,
+            "confidence": 0.7,
             "location": f"{hostname}:443",
             "payload": "-",
             "description": "Port 443 not open — HTTPS may not be configured.",
@@ -82,10 +94,12 @@ def check_ssl(hostname):
         results.append({
             "type": "SSL Check",
             "severity": "INFO",
+            "verification_status": STATUS_INCONCLUSIVE,
+            "confidence": 1.0,
             "location": hostname,
             "payload": "-",
             "description": f"SSL check could not complete: {str(e)}",
-            "recommendation": "",
+            "recommendation": "Treat this as inconclusive until verified with a browser or dedicated TLS tooling.",
         })
     return results
 
@@ -108,15 +122,19 @@ def check_ports(hostname):
             results.append({
                 "type": "Open Risky Port",
                 "severity": "MEDIUM",
+                "verification_status": STATUS_REVIEW,
+                "confidence": 0.3,
                 "location": f"{hostname}:{port}",
                 "payload": service,
-                "description": f"Port {port} ({service}) is open — may expose sensitive service to internet.",
-                "recommendation": f"Restrict access to port {port} using firewall rules if not needed publicly.",
+                "description": f"TCP connect succeeded on port {port} ({service}), but service exposure still needs manual verification.",
+                "recommendation": f"Verify the service on port {port} manually before treating it as a real exposure.",
             })
         else:
             results.append({
                 "type": "Open Port",
                 "severity": "INFO",
+                "verification_status": STATUS_INFO,
+                "confidence": 0.7,
                 "location": f"{hostname}:{port}",
                 "payload": service,
                 "description": f"Port {port} ({service}) is open.",
@@ -127,6 +145,8 @@ def check_ports(hostname):
         results.append({
             "type": "Port Scan",
             "severity": "INFO",
+            "verification_status": STATUS_INFO,
+            "confidence": 0.7,
             "location": hostname,
             "payload": "-",
             "description": "No common open ports detected (firewall may be blocking).",
